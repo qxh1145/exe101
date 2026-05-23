@@ -1,0 +1,308 @@
+import { z } from 'zod';
+
+export const updateProfileSchema = z.object({
+  major: z.string().min(2, 'Major is required'),
+  year: z.number().int().min(1, 'Invalid academic year').max(10, 'Invalid academic year'),
+  age: z.number().int().min(16, 'You must be at least 16 years old').max(100, 'Invalid age'),
+});
+import prisma from '../config/prisma.js';
+import { NotFoundError, BadRequestError } from '../core/custom-errors.js';
+
+export const updateProfile = async (userId, data) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      major: data.major,
+      year: data.year,
+      age: data.age,
+      onboardingStatus: 'COMPLETED',
+    },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      major: true,
+      year: true,
+      age: true,
+      onboardingStatus: true,
+    },
+  });
+
+  return updatedUser;
+};
+import * as userService from '../services/user.service.js';
+import { successResponse } from '../core/response-formatter.js';
+
+export const updateProfileHandler = async (req, res, next) => {
+  try {
+    const userId = req.user.id; // from authMiddleware
+    const data = req.body;
+    
+    const updatedUser = await userService.updateProfile(userId, data);
+    
+    return successResponse(res, { user: updatedUser }, 'Profile updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+import { Router } from 'express';
+import { updateProfileHandler } from '../controllers/user.controller.js';
+import { authMiddleware } from '../core/auth-middleware.js';
+import { validateRequest } from '../core/validate-request.js';
+import { updateProfileSchema } from '../validators/profile.validator.js';
+
+const router = Router();
+
+// Protect all user routes
+router.use(authMiddleware);
+
+router.put('/profile', validateRequest(updateProfileSchema), updateProfileHandler);
+
+export default router;
+import { Router } from 'express';
+import authRoutes from './auth.routes.js';
+import userRoutes from './user.routes.js';
+
+const router = Router();
+
+// Mount all v1 routes
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+
+export default router;
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { setCredentials, logout, updateUser } from '../slices/authSlice';
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
+
+export const apiSlice = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({
+    baseUrl: BASE_URL,
+    // Automatically attach cookies to requests
+    credentials: 'include',
+    prepareHeaders: (headers) => {
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    login: builder.mutation({
+      query: (credentials) => ({
+        url: '/auth/login',
+        method: 'POST',
+        body: credentials,
+      }),
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials({ user: data.data.user }));
+        } catch (err) {
+          // handled by component
+        }
+      },
+    }),
+    register: builder.mutation({
+      query: (credentials) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body: credentials,
+      }),
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials({ user: data.data.user }));
+        } catch (err) {
+          // handled by component
+        }
+      },
+    }),
+    logout: builder.mutation({
+      query: () => ({
+        url: '/auth/logout',
+        method: 'POST',
+      }),
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(logout());
+        } catch (err) {
+          dispatch(logout()); // Ensure local state is cleared even if api fails
+        }
+      },
+    }),
+    updateProfile: builder.mutation({
+      query: (profileData) => ({
+        url: '/users/profile',
+        method: 'PUT',
+        body: profileData,
+      }),
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(updateUser(data.data.user));
+        } catch (err) {
+          // handled by component
+        }
+      },
+    }),
+  }),
+});
+
+export const { useLoginMutation, useRegisterMutation, useLogoutMutation, useUpdateProfileMutation } = apiSlice;
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+interface User {
+  id: string;
+  email: string;
+  role: 'USER' | 'ADMIN';
+  onboardingStatus: 'PENDING' | 'COMPLETED';
+}
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+}
+
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false,
+};
+
+export const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    setCredentials: (
+      state,
+      action: PayloadAction<{ user: User }>
+    ) => {
+      state.user = action.payload.user;
+      state.isAuthenticated = true;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.isAuthenticated = false;
+    },
+    updateUser: (state, action) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
+  },
+});
+
+export const { setCredentials, logout, updateUser } = authSlice.actions;
+export default authSlice.reducer;
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useUpdateProfileMutation } from '@/store/api/apiSlice';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const user = useSelector((state: RootState) => state.auth.user);
+  
+  const [major, setMajor] = useState('');
+  const [year, setYear] = useState('');
+  const [age, setAge] = useState('');
+  
+  const [updateProfile, { isLoading, error }] = useUpdateProfileMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await updateProfile({
+        major,
+        year: parseInt(year),
+        age: parseInt(age)
+      }).unwrap();
+      
+      if (response.success) {
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Failed to update profile', err);
+    }
+  };
+
+  return (
+    <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-slate-900">Welcome, {user?.email?.split('@')[0] || 'Student'}!</h2>
+        <p className="mt-2 text-sm text-slate-600">Please tell us a bit about yourself so we can match you with the right surveys.</p>
+      </div>
+
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        {error && (
+          <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
+            {typeof (error as any)?.data?.error?.message === 'string' 
+              ? (error as any).data.error.message 
+              : 'Failed to update profile. Please check your inputs.'}
+          </div>
+        )}
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Major</label>
+            <input
+              type="text"
+              required
+              value={major}
+              onChange={(e) => setMajor(e.target.value)}
+              className="mt-1 appearance-none relative block w-full px-3 py-2 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-all"
+              placeholder="e.g. Software Engineering"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Academic Year</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              required
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="mt-1 appearance-none relative block w-full px-3 py-2 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-all"
+              placeholder="e.g. 3"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Age</label>
+            <input
+              type="number"
+              min="16"
+              max="100"
+              required
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              className="mt-1 appearance-none relative block w-full px-3 py-2 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-all"
+              placeholder="e.g. 20"
+            />
+          </div>
+        </div>
+
+        <div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-70"
+          >
+            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Complete Profile'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -1,0 +1,66 @@
+# generated: 2026-05-23T17:02:00+07:00
+# last_updated: 2026-05-23T17:02:00+07:00
+# project: Rescom
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: /Users/quan/HocTap/Vibecode/exe-prj/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: "2026-05-23T17:02:00+07:00"
+last_updated: "2026-05-23T17:02:00+07:00"
+project: "Rescom"
+project_key: "NOKEY"
+tracking_system: "file-system"
+story_location: "/Users/quan/HocTap/Vibecode/exe-prj/_bmad-output/implementation-artifacts"
+
+development_status:
+  epic-1: in-progress
+  1-1-setup-database-seeding: done
+  1-2-user-authentication-wallet-initialization: done
+  1-3-demographic-profile-update: review
+  epic-1-retrospective: optional
+  epic-2: backlog
+  2-1-survey-marketplace-feed-filtering: backlog
+  2-2-survey-creation-ui: backlog
+  2-3-escrow-deduction-transaction: backlog
+  2-4-expired-survey-escrow-auto-refund: backlog
+  epic-2-retrospective: optional
+  epic-3: backlog
+  3-1-survey-detail-time-barrier-initiation: backlog
+  3-2-time-barrier-ui-code-submission: backlog
+  3-3-submission-validation-pending-reward-transaction: backlog
+  epic-3-retrospective: optional
+  epic-4: backlog
+  4-1-wallet-history-ui-vnd-estimation: backlog
+  4-2-pending-balance-settlement-cron-job: backlog
+  4-3-survey-dispute-fraud-reporting: backlog
+  4-4-admin-dashboard-system-settings: backlog
+  epic-4-retrospective: optional
