@@ -1,6 +1,6 @@
 # Story 1.3: Demographic Profile Update
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -62,3 +62,9 @@ So that hệ thống có thể phân phối cho tôi những bài khảo sát nh
 - `frontend/src/store/api/apiSlice.ts`
 - `frontend/src/store/slices/authSlice.ts`
 - `frontend/src/app/(auth)/onboarding/page.tsx`
+
+### Review Findings
+
+- [x] [Review][Patch] Cần thêm `.trim()` và `.max(100)` cho trường `major` trong `profile.validator.js` để tránh chuỗi quá dài gây DoS. [backend/src/validators/profile.validator.js:4]
+- [x] [Review][Patch] Trong middleware `validate-request.js`, cần gán lại `req.body = schema.parse(req.body)` thay vì chỉ gọi `schema.parse()` để loại bỏ các trường dư thừa (strip unknown) và áp dụng các transform của Zod. [backend/src/core/validate-request.js:7]
+- [x] [Review][Defer] `updateProfile` trong service vẫn cho phép cập nhật dữ liệu khi trạng thái đã là `COMPLETED`. (Chưa chặn người dùng cũ). — deferred, pre-existing

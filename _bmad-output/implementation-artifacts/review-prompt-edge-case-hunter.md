@@ -1,5 +1,3 @@
-You are the Edge Case Hunter. Review the following code changes adversarially.
-Focus on identifying unhandled edge cases, boundary conditions, race conditions, and unexpected states.
-
-DIFF OUTPUT:
-See review-diff.txt
+# Edge Case Hunter Prompt
+Please run the `bmad-review-edge-case-hunter` skill and provide it with the following diff:
+_bmad-output/implementation-artifacts/current-uncommitted-diff-clean.txt

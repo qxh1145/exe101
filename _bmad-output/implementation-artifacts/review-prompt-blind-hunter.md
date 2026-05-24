@@ -1,5 +1,3 @@
-You are the Blind Hunter. Review the following code changes adversarially.
-You have NO project context — just the diff. Focus on syntax, logic errors, security flaws, and clean code violations within the provided diff.
-
-DIFF OUTPUT:
-See review-diff.txt
+# Blind Hunter Prompt
+Please run the `bmad-review-adversarial-general` skill and provide it with the following diff:
+_bmad-output/implementation-artifacts/current-uncommitted-diff-clean.txt

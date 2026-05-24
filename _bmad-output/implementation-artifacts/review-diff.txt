@@ -1,308 +1,591 @@
-import { z } from 'zod';
-
-export const updateProfileSchema = z.object({
-  major: z.string().min(2, 'Major is required'),
-  year: z.number().int().min(1, 'Invalid academic year').max(10, 'Invalid academic year'),
-  age: z.number().int().min(16, 'You must be at least 16 years old').max(100, 'Invalid age'),
-});
-import prisma from '../config/prisma.js';
-import { NotFoundError, BadRequestError } from '../core/custom-errors.js';
-
-export const updateProfile = async (userId, data) => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      major: data.major,
-      year: data.year,
-      age: data.age,
-      onboardingStatus: 'COMPLETED',
-    },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      major: true,
-      year: true,
-      age: true,
-      onboardingStatus: true,
-    },
-  });
-
-  return updatedUser;
-};
-import * as userService from '../services/user.service.js';
-import { successResponse } from '../core/response-formatter.js';
-
-export const updateProfileHandler = async (req, res, next) => {
-  try {
-    const userId = req.user.id; // from authMiddleware
-    const data = req.body;
-    
-    const updatedUser = await userService.updateProfile(userId, data);
-    
-    return successResponse(res, { user: updatedUser }, 'Profile updated successfully');
-  } catch (error) {
-    next(error);
-  }
-};
-import { Router } from 'express';
-import { updateProfileHandler } from '../controllers/user.controller.js';
-import { authMiddleware } from '../core/auth-middleware.js';
-import { validateRequest } from '../core/validate-request.js';
-import { updateProfileSchema } from '../validators/profile.validator.js';
-
-const router = Router();
-
-// Protect all user routes
-router.use(authMiddleware);
-
-router.put('/profile', validateRequest(updateProfileSchema), updateProfileHandler);
-
-export default router;
-import { Router } from 'express';
-import authRoutes from './auth.routes.js';
-import userRoutes from './user.routes.js';
-
-const router = Router();
-
-// Mount all v1 routes
-router.use('/auth', authRoutes);
-router.use('/users', userRoutes);
-
-export default router;
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { setCredentials, logout, updateUser } from '../slices/authSlice';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api/v1';
-
-export const apiSlice = createApi({
-  reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-    // Automatically attach cookies to requests
-    credentials: 'include',
-    prepareHeaders: (headers) => {
-      return headers;
-    },
-  }),
-  endpoints: (builder) => ({
-    login: builder.mutation({
-      query: (credentials) => ({
-        url: '/auth/login',
-        method: 'POST',
-        body: credentials,
-      }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          dispatch(setCredentials({ user: data.data.user }));
-        } catch (err) {
-          // handled by component
-        }
-      },
-    }),
-    register: builder.mutation({
-      query: (credentials) => ({
-        url: '/auth/register',
-        method: 'POST',
-        body: credentials,
-      }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          dispatch(setCredentials({ user: data.data.user }));
-        } catch (err) {
-          // handled by component
-        }
-      },
-    }),
-    logout: builder.mutation({
-      query: () => ({
-        url: '/auth/logout',
-        method: 'POST',
-      }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          await queryFulfilled;
-          dispatch(logout());
-        } catch (err) {
-          dispatch(logout()); // Ensure local state is cleared even if api fails
-        }
-      },
-    }),
-    updateProfile: builder.mutation({
-      query: (profileData) => ({
-        url: '/users/profile',
-        method: 'PUT',
-        body: profileData,
-      }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          dispatch(updateUser(data.data.user));
-        } catch (err) {
-          // handled by component
-        }
-      },
-    }),
-  }),
-});
-
-export const { useLoginMutation, useRegisterMutation, useLogoutMutation, useUpdateProfileMutation } = apiSlice;
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'USER' | 'ADMIN';
-  onboardingStatus: 'PENDING' | 'COMPLETED';
-}
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-}
-
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-};
-
-export const authSlice = createSlice({
-  name: 'auth',
-  initialState,
-  reducers: {
-    setCredentials: (
-      state,
-      action: PayloadAction<{ user: User }>
-    ) => {
-      state.user = action.payload.user;
-      state.isAuthenticated = true;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.isAuthenticated = false;
-    },
-    updateUser: (state, action) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
-    },
-  },
-});
-
-export const { setCredentials, logout, updateUser } = authSlice.actions;
-export default authSlice.reducer;
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { useUpdateProfileMutation } from '@/store/api/apiSlice';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
-
-export default function OnboardingPage() {
-  const router = useRouter();
-  const user = useSelector((state: RootState) => state.auth.user);
-  
-  const [major, setMajor] = useState('');
-  const [year, setYear] = useState('');
-  const [age, setAge] = useState('');
-  
-  const [updateProfile, { isLoading, error }] = useUpdateProfileMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await updateProfile({
-        major,
-        year: parseInt(year),
-        age: parseInt(age)
-      }).unwrap();
-      
-      if (response.success) {
-        router.push('/dashboard');
-      }
-    } catch (err: any) {
-      console.error('Failed to update profile', err);
-    }
-  };
-
-  return (
-    <div className="max-w-md w-full mx-auto mt-10 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-slate-900">Welcome, {user?.email?.split('@')[0] || 'Student'}!</h2>
-        <p className="mt-2 text-sm text-slate-600">Please tell us a bit about yourself so we can match you with the right surveys.</p>
-      </div>
-
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        {error && (
-          <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
-            {typeof (error as any)?.data?.error?.message === 'string' 
-              ? (error as any).data.error.message 
-              : 'Failed to update profile. Please check your inputs.'}
-          </div>
-        )}
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Major</label>
-            <input
-              type="text"
-              required
-              value={major}
-              onChange={(e) => setMajor(e.target.value)}
-              className="mt-1 appearance-none relative block w-full px-3 py-2 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-all"
-              placeholder="e.g. Software Engineering"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Academic Year</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              required
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="mt-1 appearance-none relative block w-full px-3 py-2 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-all"
-              placeholder="e.g. 3"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Age</label>
-            <input
-              type="number"
-              min="16"
-              max="100"
-              required
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              className="mt-1 appearance-none relative block w-full px-3 py-2 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-all"
-              placeholder="e.g. 20"
-            />
-          </div>
-        </div>
-
-        <div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-70"
-          >
-            {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Complete Profile'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+diff --git a/backend/package.json b/backend/package.json
+index b599079..6198deb 100644
+--- a/backend/package.json
++++ b/backend/package.json
+@@ -7,7 +7,7 @@
+   "scripts": {
+     "start": "node src/server.js",
+     "dev": "nodemon src/server.js",
+-    "test": "echo \"Error: no test specified\" && exit 1"
++    "test": "vitest"
+   },
+   "prisma": {
+     "seed": "node prisma/seed.js"
+@@ -27,6 +27,8 @@
+   "keywords": [],
+   "devDependencies": {
+     "nodemon": "^3.1.14",
+-    "prisma": "^5.22.0"
++    "prisma": "^5.22.0",
++    "supertest": "^7.2.2",
++    "vitest": "^4.1.7"
+   }
+ }
+diff --git a/backend/src/controllers/user.controller.js b/backend/src/controllers/user.controller.js
+index 04c08d2..d140478 100644
+--- a/backend/src/controllers/user.controller.js
++++ b/backend/src/controllers/user.controller.js
+@@ -1,5 +1,5 @@
+ import * as userService from '../services/user.service.js';
+-import { successResponse } from '../core/response-formatter.js';
++import { sendSuccess } from '../core/response-formatter.js';
+ 
+ export const updateProfileHandler = async (req, res, next) => {
+   try {
+@@ -8,7 +8,7 @@ export const updateProfileHandler = async (req, res, next) => {
+     
+     const updatedUser = await userService.updateProfile(userId, data);
+     
+-    return successResponse(res, { user: updatedUser }, 'Profile updated successfully');
++    return sendSuccess(res, updatedUser);
+   } catch (error) {
+     next(error);
+   }
+diff --git a/backend/src/core/auth-middleware.js b/backend/src/core/auth-middleware.js
+index 2a78600..e35b066 100644
+--- a/backend/src/core/auth-middleware.js
++++ b/backend/src/core/auth-middleware.js
+@@ -16,7 +16,7 @@ export const authMiddleware = async (req, res, next) => {
+     // Fetch user to verify currentSessionId for Single Device Login
+     const user = await prisma.user.findUnique({
+       where: { id: decoded.userId },
+-      select: { currentSessionId: true, role: true }
++      select: { currentSessionId: true, role: true, onboardingStatus: true, major: true, year: true, age: true }
+     });
+ 
+     if (!user) {
+@@ -33,6 +33,10 @@ export const authMiddleware = async (req, res, next) => {
+       id: decoded.userId,
+       role: user.role,
+       sessionId: decoded.sessionId,
++      onboardingStatus: user.onboardingStatus,
++      major: user.major,
++      year: user.year,
++      age: user.age
+     };
+ 
+     next();
+diff --git a/backend/src/core/validate-request.js b/backend/src/core/validate-request.js
+index 0c6354e..270f5cb 100644
+--- a/backend/src/core/validate-request.js
++++ b/backend/src/core/validate-request.js
+@@ -4,12 +4,13 @@ export const validateRequest = (schema) => {
+   return (req, res, next) => {
+     try {
+       // Validate req.body against schema
+-      schema.parse(req.body);
++      req.body = schema.parse(req.body);
+       next();
+     } catch (error) {
+       if (error.name === 'ZodError') {
+         // Collect all error messages
+-        const messages = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
++        const issues = error.errors || error.issues || [];
++        const messages = issues.map((e) => `${(e.path || []).join('.')}: ${e.message}`).join(', ');
+         next(new BadRequestError(`Validation failed: ${messages}`, 'VALIDATION_ERROR'));
+       } else {
+         next(error);
+diff --git a/backend/src/routes/index.js b/backend/src/routes/index.js
+index 5fa6a11..c73560b 100644
+--- a/backend/src/routes/index.js
++++ b/backend/src/routes/index.js
+@@ -1,11 +1,13 @@
+ import { Router } from 'express';
+ import authRoutes from './auth.routes.js';
+ import userRoutes from './user.routes.js';
++import surveyRoutes from './survey.routes.js';
+ 
+ const router = Router();
+ 
+ // Mount all v1 routes
+ router.use('/auth', authRoutes);
+ router.use('/users', userRoutes);
++router.use('/surveys', surveyRoutes);
+ 
+ export default router;
+diff --git a/backend/src/validators/profile.validator.js b/backend/src/validators/profile.validator.js
+index 3524ed2..1be449e 100644
+--- a/backend/src/validators/profile.validator.js
++++ b/backend/src/validators/profile.validator.js
+@@ -1,7 +1,7 @@
+ import { z } from 'zod';
+ 
+ export const updateProfileSchema = z.object({
+-  major: z.string().min(2, 'Major is required'),
++  major: z.string().trim().min(2, 'Major is required').max(100, 'Major is too long'),
+   year: z.number().int().min(1, 'Invalid academic year').max(10, 'Invalid academic year'),
+   age: z.number().int().min(16, 'You must be at least 16 years old').max(100, 'Invalid age'),
+ });
+diff --git a/backend/src/controllers/survey.controller.js b/backend/src/controllers/survey.controller.js
+new file mode 100644
+index 0000000..a4bbd8d
+--- /dev/null
++++ b/backend/src/controllers/survey.controller.js
+@@ -0,0 +1,19 @@
++import * as surveyService from '../services/survey.service.js';
++import { sendSuccess } from '../core/response-formatter.js';
++import { ForbiddenError } from '../core/custom-errors.js';
++
++export const getMarketplaceFeedHandler = async (req, res, next) => {
++  try {
++    const user = req.user;
++    
++    if (user.onboardingStatus !== 'COMPLETED') {
++      throw new ForbiddenError('You must complete onboarding to access the marketplace');
++    }
++
++    const surveys = await surveyService.getMarketplaceSurveys(user);
++    
++    return sendSuccess(res, { surveys });
++  } catch (error) {
++    next(error);
++  }
++};
+diff --git a/backend/src/routes/survey.routes.js b/backend/src/routes/survey.routes.js
+new file mode 100644
+index 0000000..8bb9944
+--- /dev/null
++++ b/backend/src/routes/survey.routes.js
+@@ -0,0 +1,12 @@
++import { Router } from 'express';
++import { getMarketplaceFeedHandler } from '../controllers/survey.controller.js';
++import { authMiddleware } from '../core/auth-middleware.js';
++
++const router = Router();
++
++// Protect all survey routes
++router.use(authMiddleware);
++
++router.get('/marketplace', getMarketplaceFeedHandler);
++
++export default router;
+diff --git a/backend/src/services/survey.service.js b/backend/src/services/survey.service.js
+new file mode 100644
+index 0000000..5b76f35
+--- /dev/null
++++ b/backend/src/services/survey.service.js
+@@ -0,0 +1,46 @@
++import prisma from '../config/prisma.js';
++
++export const getMarketplaceSurveys = async (user) => {
++  const { major, year, age } = user;
++
++  const surveys = await prisma.survey.findMany({
++    where: {
++      status: 'ACTIVE',
++      expiresAt: { gt: new Date() },
++      AND: [
++        { OR: [{ targetMajor: null }, { targetMajor: major || undefined }] },
++        { OR: [{ targetYear: null }, { targetYear: year || undefined }] },
++        { OR: [{ targetAgeMin: null }, { targetAgeMin: { lte: age || undefined } }] },
++        { OR: [{ targetAgeMax: null }, { targetAgeMax: { gte: age || undefined } }] },
++      ],
++      NOT: {
++        sessions: {
++          some: { userId: user.id },
++        },
++      },
++    },
++    orderBy: { createdAt: 'desc' },
++    select: {
++      id: true,
++      title: true,
++      bounty: true,
++      estimatedTime: true,
++      targetMajor: true,
++      targetYear: true,
++      targetAgeMin: true,
++      targetAgeMax: true,
++      targetCount: true,
++      expiresAt: true,
++      _count: {
++        select: {
++          sessions: { where: { status: 'COMPLETED' } }
++        }
++      },
++      publisher: {
++        select: { email: true }
++      }
++    }
++  });
++
++  return surveys;
++};
+diff --git a/backend/tests/api/auth.test.js b/backend/tests/api/auth.test.js
+new file mode 100644
+index 0000000..3660ec1
+--- /dev/null
++++ b/backend/tests/api/auth.test.js
+@@ -0,0 +1,86 @@
++import { describe, it, expect, beforeAll, afterAll } from 'vitest';
++import request from 'supertest';
++import app from '../../src/app.js';
++import prisma from '../../src/config/prisma.js';
++
++describe('Auth API Endpoints', () => {
++  const testUser = {
++    email: `test_auth_${Date.now()}@example.com`,
++    password: 'password123',
++  };
++
++  beforeAll(async () => {
++    const user = await prisma.user.findUnique({ where: { email: testUser.email } });
++    if (user) {
++      const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
++      if (wallet) {
++        await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
++        await prisma.wallet.delete({ where: { id: wallet.id } });
++      }
++      await prisma.user.delete({ where: { id: user.id } });
++    }
++  });
++
++  afterAll(async () => {
++    const user = await prisma.user.findUnique({ where: { email: testUser.email } });
++    if (user) {
++      const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
++      if (wallet) {
++        await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
++        await prisma.wallet.delete({ where: { id: wallet.id } });
++      }
++      await prisma.user.delete({ where: { id: user.id } });
++    }
++  });
++
++  it('should register a new user successfully', async () => {
++    const res = await request(app)
++      .post('/api/v1/auth/register')
++      .send(testUser);
++
++    expect(res.status).toBe(201);
++    expect(res.body.success).toBe(true);
++    expect(res.body.data.user).toBeDefined();
++    expect(res.body.data.user.email).toBe(testUser.email);
++    expect(res.body.data.user.password).toBeUndefined(); // Password should not be returned
++  });
++
++  it('should login the user and return a token via cookie', async () => {
++    const res = await request(app)
++      .post('/api/v1/auth/login')
++      .send(testUser);
++
++    expect(res.status).toBe(200);
++    expect(res.body.success).toBe(true);
++    expect(res.body.data.user).toBeDefined();
++    expect(res.body.data.user.email).toBe(testUser.email);
++
++    // Check if token cookie is set
++    const cookies = res.headers['set-cookie'];
++    expect(cookies).toBeDefined();
++    expect(cookies.some((cookie) => cookie.startsWith('accessToken='))).toBe(true);
++  });
++
++  it('should fail registration with an existing email', async () => {
++    const res = await request(app)
++      .post('/api/v1/auth/register')
++      .send(testUser);
++
++    expect(res.status).toBe(409);
++    expect(res.body.success).toBe(false);
++    expect(res.body.error.message).toContain('Email already in use');
++  });
++
++  it('should fail login with incorrect password', async () => {
++    const res = await request(app)
++      .post('/api/v1/auth/login')
++      .send({
++        email: testUser.email,
++        password: 'wrongpassword',
++      });
++
++    expect(res.status).toBe(401);
++    expect(res.body.success).toBe(false);
++    expect(res.body.error.message).toContain('Invalid credentials');
++  });
++});
+diff --git a/backend/tests/api/profile.test.js b/backend/tests/api/profile.test.js
+new file mode 100644
+index 0000000..f5b5b23
+--- /dev/null
++++ b/backend/tests/api/profile.test.js
+@@ -0,0 +1,93 @@
++import { describe, it, expect, beforeAll, afterAll } from 'vitest';
++import request from 'supertest';
++import app from '../../src/app.js';
++import prisma from '../../src/config/prisma.js';
++
++describe('Profile API Endpoints', () => {
++  const testUser = {
++    email: `test_profile_${Date.now()}@example.com`,
++    password: 'password123',
++  };
++
++  let tokenCookie = '';
++
++  beforeAll(async () => {
++    const user = await prisma.user.findUnique({ where: { email: testUser.email } });
++    if (user) {
++      const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
++      if (wallet) {
++        await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
++        await prisma.wallet.delete({ where: { id: wallet.id } });
++      }
++      await prisma.user.delete({ where: { id: user.id } });
++    }
++
++    // Create user and get token
++    const res = await request(app)
++      .post('/api/v1/auth/register')
++      .send(testUser);
++
++    const loginRes = await request(app)
++      .post('/api/v1/auth/login')
++      .send(testUser);
++
++    const cookies = loginRes.headers['set-cookie'];
++    tokenCookie = cookies.find(c => c.startsWith('accessToken=')).split(';')[0];
++  });
++
++  afterAll(async () => {
++    const user = await prisma.user.findUnique({ where: { email: testUser.email } });
++    if (user) {
++      const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
++      if (wallet) {
++        await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
++        await prisma.wallet.delete({ where: { id: wallet.id } });
++      }
++      await prisma.user.delete({ where: { id: user.id } });
++    }
++  });
++
++  it('should update demographic profile and set status to COMPLETED', async () => {
++    const res = await request(app)
++      .put('/api/v1/users/profile')
++      .set('Cookie', [tokenCookie])
++      .send({
++        major: 'Computer Science',
++        year: 3,
++        age: 21,
++      });
++
++    expect(res.status).toBe(200);
++    expect(res.body.success).toBe(true);
++    expect(res.body.data.major).toBe('Computer Science');
++    expect(res.body.data.year).toBe(3);
++    expect(res.body.data.age).toBe(21);
++    expect(res.body.data.onboardingStatus).toBe('COMPLETED');
++  });
++
++  it('should fail if missing required fields', async () => {
++    const res = await request(app)
++      .put('/api/v1/users/profile')
++      .set('Cookie', [tokenCookie])
++      .send({
++        major: 'IT',
++        // missing year and age
++      });
++
++    expect(res.status).toBe(400);
++    expect(res.body.success).toBe(false);
++    expect(res.body.error.message).toContain('Validation failed');
++  });
++
++  it('should fail if unauthenticated', async () => {
++    const res = await request(app)
++      .put('/api/v1/users/profile')
++      .send({
++        major: 'IT',
++        year: 1,
++        age: 18,
++      });
++
++    expect(res.status).toBe(401);
++  });
++});
+diff --git a/backend/tests/api/survey.test.js b/backend/tests/api/survey.test.js
+new file mode 100644
+index 0000000..b2ecaa3
+--- /dev/null
++++ b/backend/tests/api/survey.test.js
+@@ -0,0 +1,181 @@
++import { describe, it, expect, beforeAll, afterAll } from 'vitest';
++import request from 'supertest';
++import app from '../../src/app.js';
++import prisma from '../../src/config/prisma.js';
++
++describe('Survey API Endpoints - Marketplace', () => {
++  const publisherData = {
++    email: `publisher_${Date.now()}@example.com`,
++    passwordHash: 'hashed',
++    onboardingStatus: 'COMPLETED'
++  };
++
++  const respondentData = {
++    email: `respondent_${Date.now()}@example.com`,
++    password: 'password123',
++    major: 'Software Engineering',
++    year: 3,
++    age: 21,
++    onboardingStatus: 'COMPLETED'
++  };
++
++  const pendingRespondentData = {
++    email: `pending_${Date.now()}@example.com`,
++    password: 'password123',
++    onboardingStatus: 'PENDING'
++  };
++
++  let tokenCookie = '';
++  let pendingTokenCookie = '';
++  let publisherId = '';
++  let respondentId = '';
++  let surveyList = [];
++
++  beforeAll(async () => {
++    // Create publisher
++    const publisher = await prisma.user.create({ data: publisherData });
++    publisherId = publisher.id;
++
++    // Create surveys
++    const surveys = [
++      { // 0: Match all
++        title: 'Survey 1 - Match',
++        url: 'http://form.com/1',
++        completionCode: 'code1',
++        targetCount: 10,
++        bounty: 10,
++        estimatedTime: 5,
++        status: 'ACTIVE',
++        expiresAt: new Date(Date.now() + 100000000), // Future
++        publisherId
++      },
++      { // 1: Expired
++        title: 'Survey 2 - Expired',
++        url: 'http://form.com/2',
++        completionCode: 'code2',
++        targetCount: 10,
++        bounty: 10,
++        estimatedTime: 5,
++        status: 'ACTIVE',
++        expiresAt: new Date(Date.now() - 100000000), // Past
++        publisherId
++      },
++      { // 2: Wrong Major
++        title: 'Survey 3 - Wrong Major',
++        url: 'http://form.com/3',
++        completionCode: 'code3',
++        targetCount: 10,
++        bounty: 10,
++        estimatedTime: 5,
++        targetMajor: 'Marketing',
++        status: 'ACTIVE',
++        expiresAt: new Date(Date.now() + 100000000), // Future
++        publisherId
++      },
++      { // 3: Match Demographic exactly
++        title: 'Survey 4 - Exact Match',
++        url: 'http://form.com/4',
++        completionCode: 'code4',
++        targetCount: 10,
++        bounty: 20,
++        estimatedTime: 10,
++        targetMajor: 'Software Engineering',
++        targetYear: 3,
++        status: 'ACTIVE',
++        expiresAt: new Date(Date.now() + 100000000), // Future
++        publisherId
++      },
++    ];
++
++    for (const data of surveys) {
++      const s = await prisma.survey.create({ data });
++      surveyList.push(s);
++    }
++
++    // Register Respondent
++    await request(app).post('/api/v1/auth/register').send(pendingRespondentData);
++    const pendRes = await request(app).post('/api/v1/auth/login').send(pendingRespondentData);
++    pendingTokenCookie = pendRes.headers['set-cookie'].find(c => c.startsWith('accessToken=')).split(';')[0];
++
++    // Register & Complete Onboarding for Respondent
++    await request(app).post('/api/v1/auth/register').send(respondentData);
++    const resLogin = await request(app).post('/api/v1/auth/login').send(respondentData);
++    tokenCookie = resLogin.headers['set-cookie'].find(c => c.startsWith('accessToken=')).split(';')[0];
++
++    respondentId = resLogin.body.data.user.id;
++
++    await request(app)
++      .put('/api/v1/users/profile')
++      .set('Cookie', [tokenCookie])
++      .send({ major: respondentData.major, year: respondentData.year, age: respondentData.age });
++  });
++
++  afterAll(async () => {
++    // Cleanup
++    await prisma.surveySession.deleteMany({ where: { surveyId: { in: surveyList.map(s => s.id) } } });
++    await prisma.survey.deleteMany({ where: { publisherId } });
++    
++    for (const email of [publisherData.email, respondentData.email, pendingRespondentData.email]) {
++      const user = await prisma.user.findUnique({ where: { email } });
++      if (user) {
++        const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
++        if (wallet) {
++          await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
++          await prisma.wallet.delete({ where: { id: wallet.id } });
++        }
++        await prisma.user.delete({ where: { id: user.id } });
++      }
++    }
++  });
++
++  it('should deny access if onboarding is not completed', async () => {
++    const res = await request(app)
++      .get('/api/v1/surveys/marketplace')
++      .set('Cookie', [pendingTokenCookie]);
++
++    expect(res.status).toBe(403);
++    expect(res.body.error.message).toContain('You must complete onboarding to access the marketplace');
++  });
++
++  it('should return only active, unexpired surveys matching demographic profile', async () => {
++    const res = await request(app)
++      .get('/api/v1/surveys/marketplace')
++      .set('Cookie', [tokenCookie]);
++
++    expect(res.status).toBe(200);
++    expect(res.body.success).toBe(true);
++    
++    const returnedTitles = res.body.data.surveys.map(s => s.title);
++    
++    // Should include Survey 1 and Survey 4
++    expect(returnedTitles).toContain('Survey 1 - Match');
++    expect(returnedTitles).toContain('Survey 4 - Exact Match');
++    
++    // Should NOT include Survey 2 (expired) and Survey 3 (wrong major)
++    expect(returnedTitles).not.toContain('Survey 2 - Expired');
++    expect(returnedTitles).not.toContain('Survey 3 - Wrong Major');
++  });
++
++  it('should exclude surveys the user has already participated in', async () => {
++    // Simulate user starting Survey 1
++    await prisma.surveySession.create({
++      data: {
++        userId: respondentId,
++        surveyId: surveyList[0].id,
++        status: 'IN_PROGRESS'
++      }
++    });
++
++    const res = await request(app)
++      .get('/api/v1/surveys/marketplace')
++      .set('Cookie', [tokenCookie]);
++
++    expect(res.status).toBe(200);
++    const returnedTitles = res.body.data.surveys.map(s => s.title);
++    
++    // Survey 1 should now be excluded
++    expect(returnedTitles).not.toContain('Survey 1 - Match');
++    // Survey 4 should still be there
++    expect(returnedTitles).toContain('Survey 4 - Exact Match');
++  });
++});

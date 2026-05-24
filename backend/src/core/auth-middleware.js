@@ -16,7 +16,7 @@ export const authMiddleware = async (req, res, next) => {
     // Fetch user to verify currentSessionId for Single Device Login
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { currentSessionId: true, role: true }
+      select: { currentSessionId: true, role: true, onboardingStatus: true, major: true, year: true, age: true }
     });
 
     if (!user) {
@@ -33,6 +33,10 @@ export const authMiddleware = async (req, res, next) => {
       id: decoded.userId,
       role: user.role,
       sessionId: decoded.sessionId,
+      onboardingStatus: user.onboardingStatus,
+      major: user.major,
+      year: user.year,
+      age: user.age
     };
 
     next();
