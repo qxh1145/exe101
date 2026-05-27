@@ -105,3 +105,17 @@ System must only display a published survey to users whose profiles match the pu
 ## 9. Assumptions Index
 - Inline assumption from 5 — Real-money withdrawal is handled manually by admins in Phase 1 before building automated payment gateways.
 - Inline assumption from 8.1 — Static completion code for V1 due to Google Forms limitations, relying on Time Barrier for fraud prevention.
+
+## 10. Future Scope (Phase 2)
+
+Trong giai đoạn 2, Rescom sẽ mở rộng từ một nền tảng trao đổi liên kết sang một nền tảng thu thập dữ liệu toàn diện thông qua tính năng Internal Form Builder.
+
+### 10.1 Internal Form Builder
+- Publisher có thể tạo các câu hỏi (Trắc nghiệm, Điền ngắn, Đánh giá) trực tiếp trên Rescom.
+- Respondent làm khảo sát trực tiếp trên nền tảng (không cần chuyển sang tab Google Forms).
+- Hệ thống tự ghi nhận hoàn thành mà không cần sử dụng Completion Code tĩnh.
+
+### 10.2 Dual-Pricing Mechanism (Cơ chế giá kép)
+- Rescom sẽ áp dụng mức phí (Point Bounty) khác biệt như một công cụ điều tiết hành vi:
+  - Internal Forms: Hưởng mức giá cơ bản (ưu đãi hơn).
+  - External Forms (Google/Microsoft Forms): Áp dụng hệ số phụ thu (Ví dụ: x1.5 hoặc x2 số điểm Escrow) do chất lượng dữ liệu không được Rescom kiểm chứng trực tiếp.

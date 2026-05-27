@@ -393,3 +393,24 @@ Mục tiêu là đạt chuẩn **WCAG Level AA** - Cực kỳ quan trọng để
 - **Design Tokens (Màu sắc & Typography):** Định nghĩa một bảng màu (Color Palette) tạo cảm giác an toàn, minh bạch (ví dụ: Trust Blue hoặc Emerald Green) đặc biệt cho các trạng thái của Escrow và Balance.
 - **Tùy biến Component:** Chỉnh sửa mạnh tay các component `Card` và `Table` của shadcn/ui để tối ưu hóa không gian hiển thị cho màn hình Lịch sử giao dịch (Ledger) trên các thiết bị di động nhỏ.
 - **Gamification Assets:** Tạo ra các biến thể (variants) CSS riêng cho các thông báo (Toast/Alert) để chúng "tỏa sáng" khi người dùng hoàn thành xuất sắc một khảo sát hoặc mở khóa điểm thành công.
+
+## Phase 2 UX Concept (Internal Form Builder)
+
+Khi tính năng **Internal Form Builder & Dual-Pricing** được triển khai ở Phase 2, luồng UX sẽ có những thay đổi mang tính chiến lược sau:
+
+### 1. Dual-Pricing Publish Journey
+- Ở bước `Step 1: Link & Code` của luồng Tạo khảo sát, giao diện sẽ bẻ làm 2 lựa chọn (Cards):
+  - **Option A (Khuyến nghị): Tạo Form Nội bộ.** Điểm nhấn: UI hiển thị giá "Gốc" cực kỳ thu hút, kèm tag `Rẻ hơn` (Emerald Green).
+  - **Option B: Dùng Google/Microsoft Forms.** Điểm nhấn: UI hiển thị cảnh báo giá bị "Phụ thu" (Ví dụ: x1.5 Điểm) bằng màu Warning (Amber).
+- *Mục tiêu UX:* Sử dụng hiệu ứng mỏ neo giá (Price Anchoring) để điều hướng người dùng tự nguyện chọn Form Nội bộ.
+
+### 2. Internal Form Builder Interface
+- **The Creator Workspace:** Giao diện kéo/thả (Drag & Drop) mượt mà ngay trên web. 
+- Thay vì nhồi nhét quá nhiều loại câu hỏi phức tạp như Google Forms, UI sẽ tập trung vào sự tối giản (Minimalism) với 3-4 loại câu hỏi phổ biến nhất (Trắc nghiệm, Text, Rating).
+- *Live Preview:* Người dùng vừa thiết lập câu hỏi bên trái, vừa nhìn thấy khảo sát sẽ hiển thị thế nào bên phải. Cực kỳ trực quan giúp Stressed Researcher không bị rối.
+
+### 3. The Seamless Earn Journey (Zero Friction)
+- **Sự thay đổi lớn nhất:** Tab Mỏ Neo (The Anchor Tab) sẽ không còn cần thiết nữa! 
+- Thay vì mở tab mới sang Google Forms, toàn bộ form khảo sát sẽ được load ngay trong một `Dialog` tràn màn hình (Fullscreen Modal) hoặc trang riêng biệt nội bộ.
+- Ngay khi người dùng tick vào câu hỏi cuối cùng và nhấn "Nộp", điểm thưởng (Confetti) sẽ nổ tung và ví tiền nảy lên ngay lập tức. Không còn thao tác copy/paste Completion Code phiền phức. 
+- *Cảm xúc mang lại:* Trải nghiệm mượt như lướt TikTok, giúp giữ chân người dùng ở lại hệ thống (Retention Rate) cực cao.
