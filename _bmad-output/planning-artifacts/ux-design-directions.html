@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rescom Design Directions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        trustBlue: 'hsl(220 70% 30%)',
+                        emerald: 'hsl(160 80% 40%)',
+                        amber: 'hsl(40 90% 50%)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Outfit', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-200 p-4 md:p-8 font-sans text-gray-800">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-12 text-center">
+            <h1 class="text-3xl font-bold mb-4 font-display">Rescom Design Directions</h1>
+            <p class="text-gray-600">Khám phá các hướng thiết kế (Visual Directions) cho ví Điểm (Ledger) của Rescom.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Direction 1: Neobanking -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <div class="bg-slate-900 p-4 text-white">
+                    <h2 class="text-lg font-bold font-display">D1: The Neobanking</h2>
+                    <p class="text-xs text-slate-300">Nghiêm túc, An toàn, Chuyên nghiệp</p>
+                </div>
+                <div class="p-6 bg-slate-50 h-[500px]">
+                    <!-- Mockup UI -->
+                    <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-5 mb-4">
+                        <div class="text-slate-500 text-sm mb-1">Số dư hiện tại</div>
+                        <div class="text-4xl font-display font-bold text-slate-900 mb-4">1,250 <span class="text-lg text-slate-400">Pts</span></div>
+                        <div class="flex gap-2">
+                            <button class="flex-1 bg-trustBlue text-white py-2 rounded-md font-medium text-sm hover:bg-slate-800 transition-colors">Đăng khảo sát</button>
+                            <button class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-md font-medium text-sm hover:bg-slate-200 transition-colors">Rút điểm</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="text-sm font-semibold text-slate-800">Đang khóa (Escrow)</div>
+                            <div class="text-amber-500 font-bold font-display">300 Pts</div>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div class="bg-amber-400 h-2 rounded-full" style="width: 45%"></div>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-2">Dành cho: "Khảo sát GenZ & Tiktok"</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Direction 2: Gamified App -->
+            <div class="bg-white rounded-3xl shadow-lg overflow-hidden border-2 border-emerald-100">
+                <div class="bg-emerald-500 p-5 text-white text-center">
+                    <h2 class="text-xl font-bold font-display">D2: The Gamified</h2>
+                    <p class="text-xs text-emerald-100">Vui nhộn, Trẻ trung, Năng động</p>
+                </div>
+                <div class="p-6 bg-emerald-50/30 h-[500px]">
+                    <!-- Mockup UI -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 mb-5 text-center relative overflow-hidden group hover:border-emerald-300 transition-colors">
+                        <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-100 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
+                        <div class="text-emerald-600 font-medium text-sm mb-2">Số dư của bạn</div>
+                        <div class="text-5xl font-display font-bold text-emerald-500 mb-6 tracking-tight">1,250</div>
+                        <button class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-md shadow-emerald-200 transition-all hover:-translate-y-1">Đăng khảo sát ngay!</button>
+                    </div>
+                    
+                    <div class="bg-amber-50 rounded-2xl p-5 border border-amber-200 hover:bg-amber-100/50 transition-colors cursor-pointer">
+                        <div class="flex gap-3 items-center mb-2">
+                            <div class="bg-amber-100 p-2 rounded-lg text-amber-500">🔒</div>
+                            <div>
+                                <div class="text-sm font-bold text-amber-700">Điểm đang khóa</div>
+                                <div class="text-xs text-amber-600/80">Sẽ mở khóa khi có người làm</div>
+                            </div>
+                            <div class="ml-auto text-xl font-display font-bold text-amber-500">300</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Direction 3: Minimalist Academic -->
+            <div class="bg-white rounded-md shadow-sm overflow-hidden border border-gray-200">
+                <div class="bg-white p-5 border-b border-gray-100">
+                    <h2 class="text-lg font-semibold text-gray-800">D3: Minimal Academic</h2>
+                    <p class="text-xs text-gray-500">Sạch sẽ, Tối giản, Học thuật</p>
+                </div>
+                <div class="p-6 bg-white h-[500px]">
+                    <!-- Mockup UI -->
+                    <div class="mb-8 border-b border-gray-100 pb-6 group">
+                        <div class="text-gray-400 text-xs uppercase tracking-wider mb-2">Current Balance</div>
+                        <div class="text-3xl font-light text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">1,250.00 <span class="text-sm text-gray-400">pts</span></div>
+                        <button class="border border-gray-900 text-gray-900 px-4 py-2 text-sm hover:bg-gray-900 hover:text-white transition-colors">Create Survey +</button>
+                    </div>
+                    
+                    <div class="hover:bg-gray-50 p-2 -mx-2 rounded transition-colors cursor-pointer">
+                        <div class="text-gray-400 text-xs uppercase tracking-wider mb-2">Escrow Status</div>
+                        <div class="flex justify-between items-end border-l-2 border-gray-300 pl-4">
+                            <div>
+                                <div class="text-sm text-gray-800 mb-1">Khảo sát GenZ & Tiktok</div>
+                                <div class="text-xs text-gray-400">Target: 50 responses</div>
+                            </div>
+                            <div class="text-lg text-gray-600">300 pts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="mt-12 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="text-xl font-bold mb-4">Bạn chọn hướng đi nào?</h3>
+            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                <li><strong>D1 (Neobanking)</strong> rất hợp với triết lý "Sự thật & Minh bạch" của chúng ta, giúp tạo niềm tin tuyệt đối cho Stressed Researcher.</li>
+                <li><strong>D2 (Gamified)</strong> sẽ thu hút người dùng ở lại làm khảo sát nhờ sự thân thiện và hiệu ứng vui nhộn (Moment of Delight).</li>
+                <li><strong>D3 (Minimal)</strong> tạo cảm giác học thuật chuyên nghiệp, thích hợp cho các nghiên cứu sinh/giảng viên.</li>
+            </ul>
+            <p class="mt-4 text-sm font-medium text-blue-600">Tip: Chúng ta có thể kết hợp (Ví dụ: Lấy cấu trúc an toàn của D1, nhưng thêm các hiệu ứng Gamified của D2 khi cộng điểm).</p>
+        </div>
+    </div>
+</body>
+</html>
